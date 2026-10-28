@@ -1,0 +1,12 @@
+# Identifiants et config AWS : ne jamais publier
+.aws/
+*.pem
+.env
+credentials*
+
+# Artefacts de build
+*.zip
+__pycache__/
+.vscode/
+.DS_Store
+Thumbs.db
