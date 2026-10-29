@@ -1,0 +1,40 @@
+name: Deploy backend
+
+# Se déclenche à chaque push sur main qui modifie backend/, ou manuellement
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**"]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      # Bloque le déploiement si le code Python a une erreur de syntaxe ou d'indentation
+      - name: Vérifier la syntaxe Python
+        run: python3 -m py_compile backend/lambda_function.py
+
+      - name: Se connecter à AWS (OIDC, sans clé d'accès)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-north-1
+
+      - name: Créer l'archive zip
+        run: cd backend && zip -j ../function.zip lambda_function.py
+
+      - name: Mettre à jour la Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.LAMBDA_FUNCTION }}" \
+            --zip-file fileb://function.zip
+          aws lambda wait function-updated --function-name "${{ vars.LAMBDA_FUNCTION }}"
+          echo "Lambda ${{ vars.LAMBDA_FUNCTION }} déployée."
